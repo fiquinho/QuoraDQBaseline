@@ -14,7 +14,7 @@ from tqdm import tqdm
 # LOAD DATA
 ##############################################################################
 
-df = pd.read_csv("/media/eightbit/8bit_5tb/NLP_data/Quora/DuplicateQuestion/quora_duplicate_questions.tsv",delimiter='\t')
+df = pd.read_csv("quora_duplicate_questions.tsv",delimiter='\t')
 
 # print simple stats
 print("number of rows (question pairs): %i"%(df.shape[0]))
@@ -25,8 +25,8 @@ unique_qids = set(list(df['qid2'].unique()) + list(df['qid1'].unique()))
 print("number of unique questions: %i" % (len(unique_qids)))
 
 # encode questions to unicode
-df['question1'] = df['question1'].apply(lambda x: unicode(str(x),"utf-8"))
-df['question2'] = df['question2'].apply(lambda x: unicode(str(x),"utf-8"))
+df['question1'] = df['question1'].apply(lambda x: str(x).encode('utf-8'))
+df['question2'] = df['question2'].apply(lambda x: str(x).encode("utf-8"))
 
 ##############################################################################
 # TFIDF
@@ -82,7 +82,7 @@ else:
             try:
                 idf = word2tfidf[str(word)]
             except:
-                print word
+                #print(word)
                 idf = 0
             # compute final vec
             mean_vec += vec * idf
@@ -92,6 +92,8 @@ else:
 
     # save features
     pd.to_pickle(df, 'data/2_word2vec_tfidf.pkl')
+
+print("Word2Vec saved")
 
 ##############################################################################
 # CREATE TRAIN DATA
@@ -161,20 +163,24 @@ del q2_feats
 # create model
 from siamese import *
 from keras.optimizers import RMSprop, SGD, Adam
+from keras.callbacks import Callback, ModelCheckpoint
 net = create_network(300)
 
 # train
 #optimizer = SGD(lr=1, momentum=0.8, nesterov=True, decay=0.004)
 optimizer = Adam(lr=0.001)
 net.compile(loss=contrastive_loss, optimizer=optimizer)
-
+callbacks = [ModelCheckpoint('/output/question_pairs_weights.h5', monitor='val_acc', save_best_only=True)]
 for epoch in range(50):
-    net.fit([X_train_norm[:,0,:], X_train_norm[:,1,:]], Y_train,
-          validation_data=([X_test_norm[:,0,:], X_test_norm[:,1,:]], Y_test),
-          batch_size=128, nb_epoch=1, shuffle=True, )
-    
+    history  = net.fit([X_train[:,0,:], X_train[:,1,:]], Y_train,
+                       validation_data=([X_test[:,0,:], X_test[:,1,:]], Y_test),
+                       batch_size=128, nb_epoch=1, shuffle=True,
+                       callbacks=callbacks )
+
+
+
     # compute final accuracy on training and test sets
-    pred = net.predict([X_test_norm[:,0,:], X_test_norm[:,1,:]], batch_size=128)
+    pred = net.predict([X_test[:,0,:], X_test[:,1,:]], batch_size=128)
     te_acc = compute_accuracy(pred, Y_test)
     
 #    print('* Accuracy on training set: %0.2f%%' % (100 * tr_acc))

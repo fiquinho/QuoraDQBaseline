@@ -50,12 +50,17 @@ def create_base_network(input_dim):
     dense3 = Dense(128)(relu2)
     bn3 = BatchNormalization(mode=2)(dense3)
     res3 = Merge(mode='sum')([relu2, bn3])
-    relu3 = Activation('relu')(res3)   
-    
-    feats = merge([relu3, relu2, relu1], mode='concat')
-    bn4 = BatchNormalization(mode=2)(feats)
+    relu3 = Activation('relu')(res3)
 
-    model = Model(input=input, output=bn4)
+    dense4 = Dense(128)(relu3)
+    bn4 = BatchNormalization(mode=2)(dense4)
+    res4 = Merge(mode='sum')([relu3, bn4])
+    relu4 = Activation('relu')(res4)
+    
+    #feats = merge([relu3, relu2, relu1], mode='concat')
+    #bn4 = BatchNormalization(mode=2)(feats)
+
+    model = Model(input=input, output=relu4)
 
     return model
 
